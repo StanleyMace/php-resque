@@ -22,6 +22,11 @@ class Resque
 	 * array of server swith host/port pairs
 	 */
 	protected static $redisServer = null;
+	
+	/**
+	 * @var string AUTH parameter, when requirepass is setted in redis configs
+	 */
+	protected static $redisAuth = null;
 
 	/**
 	 * @var int ID of Redis database to select.
@@ -38,9 +43,10 @@ class Resque
 	 *                      a nested array of servers with host/port pairs.
 	 * @param int $database
 	 */
-	public static function setBackend($server, $database = 0)
+	public static function setBackend($server, $auth = null, $database = 0)
 	{
 		self::$redisServer   = $server;
+		self::$redisAuth     = $auth;
 		self::$redisDatabase = $database;
 		self::$redis         = null;
 	}
