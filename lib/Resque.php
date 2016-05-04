@@ -24,9 +24,9 @@ class Resque
 	protected static $redisServer = null;
 	
 	/**
-	 * @var string AUTH parameter, when requirepass is setted in redis configs
+	 * @var string Setup others servers that collect data to combine (multiply redis master servers)
 	 */
-	protected static $redisAuth = null;
+	protected static $redisSourceServer = null;
 
 	/**
 	 * @var int ID of Redis database to select.
@@ -43,12 +43,12 @@ class Resque
 	 *                      a nested array of servers with host/port pairs.
 	 * @param int $database
 	 */
-	public static function setBackend($server, $auth = null, $database = 0)
+	public static function setBackend($server, $sourceServer = null, $database = 0)
 	{
-		self::$redisServer   = $server;
-		self::$redisAuth     = $auth;
-		self::$redisDatabase = $database;
-		self::$redis         = null;
+		self::$redisServer        = $server;
+		self::$redisSourceServer  = $sourceServer;
+		self::$redisDatabase      = $database;
+		self::$redis              = null;
 	}
 
 	/**
@@ -65,7 +65,7 @@ class Resque
 		if (is_callable(self::$redisServer)) {
 			self::$redis = call_user_func(self::$redisServer, self::$redisDatabase);
 		} else {
-			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase);
+			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase, self);
 		}
 
 		return self::$redis;

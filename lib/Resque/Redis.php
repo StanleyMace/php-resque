@@ -28,6 +28,12 @@ class Resque_Redis
 	 * The default Redis Database number
 	 */
 	const DEFAULT_DATABASE = 0;
+	
+	/**
+	 * Dsn of source servers (master nodes)
+	 * @var string|array
+	 */
+	public $sourceServer = null;
 
 	/**
 	 * @var array List of all commands in Redis that supply a key as their
@@ -108,14 +114,17 @@ class Resque_Redis
 	 * @param string|array $server A DSN or array
 	 * @param int $database A database number to select. However, if we find a valid database number in the DSN the
 	 *                      DSN-supplied value will be used instead and this parameter is ignored.
+	 * @param string|array $sourceServer A DSN or array of other servers (master nodes)
 	 */
-    public function __construct($server, $database = null)
+    public function __construct($server, $database = null, $sourceServer = null)
 	{
 		if (is_array($server)) {
 			$this->driver = new Credis_Cluster($server);
 		}
 		else {
 
+		    $this->sourceServer = $sourceServer;
+		    
 			list($host, $port, $dsnDatabase, $user, $password, $options) = self::parseDsn($server);
 			// $user is not used, only $password
 

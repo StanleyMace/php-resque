@@ -49,6 +49,11 @@ class Resque_Worker
 	 */
 	private $child = null;
 
+	/**
+	 * @var \Predis\Client[]
+	 */
+	private $sourceServersClients = null;
+
     /**
      * Instantiate a new worker, given a list of queues that it should be working
      * on. The list of queues should be supplied in the priority that they should
@@ -77,6 +82,8 @@ class Resque_Worker
         }
         $this->hostname = $hostname;
         $this->id = $this->hostname . ':'.getmypid() . ':' . implode(',', $this->queues);
+        
+        $this->connectToSourceServers();
     }
 
 	/**
@@ -136,6 +143,33 @@ class Resque_Worker
 	{
 		$this->id = $workerId;
 	}
+	
+	
+	/**
+	 * Connect to source servers
+	 */
+	public function connectToSourceServers()
+	{
+	    if (is_array(Resque::redis()->sourceServer)) {
+	        foreach (Resque::redis()->sourceServer as $server) {
+	            $this->sourceServersClients[] = new \Predis\Client($server);
+	        }
+	    }
+	}
+	
+	/**
+	 * Look for data to source servers
+	 */
+	public function collectDataFromSourceServers()
+	{
+	    if (is_array($this->sourceServersClients)) {
+	        foreach ($this->sourceServersClients as $client) {
+	            $values = $client->smembers('resque:queue:default');
+	            
+	            
+	        }
+	    }
+	}
 
 	/**
 	 * The primary loop for a worker which when called on an instance starts
@@ -154,6 +188,10 @@ class Resque_Worker
 			if($this->shutdown) {
 				break;
 			}
+			
+			
+			$this->collectDataFromSourceServers();			
+			
 
 			// Attempt to find and reserve a job
 			$job = false;
