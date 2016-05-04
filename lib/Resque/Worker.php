@@ -153,6 +153,7 @@ class Resque_Worker
 	   if (is_array(Resque::redis()->sourceServer)) {
 	        foreach (Resque::redis()->sourceServer as $server) {
 	            $client = new \Predis\Client($server);
+	            $client->connect();
 	            if ($client->isConnected()) {
 	                $this->sourceServersClients[] = $client;	                
 	            } else {
