@@ -150,9 +150,14 @@ class Resque_Worker
 	 */
 	public function connectToSourceServers()
 	{
-	    if (is_array(Resque::redis()->sourceServer)) {
+	   if (is_array(Resque::redis()->sourceServer)) {
 	        foreach (Resque::redis()->sourceServer as $server) {
-	            $this->sourceServersClients[] = new \Predis\Client($server);
+	            $client = new \Predis\Client($server);
+	            if ($client->isConnected()) {
+	                $this->sourceServersClients[] = $client;	                
+	            } else {
+	                die("Can't connect to server: " . $server);
+	            }
 	        }
 	    }
 	}
@@ -162,11 +167,24 @@ class Resque_Worker
 	 */
 	public function collectDataFromSourceServers()
 	{
+        $data = array();
 	    if (is_array($this->sourceServersClients)) {
 	        foreach ($this->sourceServersClients as $client) {
-	            $values = $client->smembers('resque:queue:default');
-	            
-	            
+	            if ($client->isConnected()) {
+    	            while($values = $client->lpop('resque:queue:default')) {
+    	                $jobJson = json_decode($values, true);
+    	                $key = floatval($jobJson['queue_time']);
+                        $data[(string) $key] = $jobJson;
+    	            }
+	            } else {
+	                die("Disconnected from some node server");
+	            }
+	        }
+	    }
+	    
+	    if (count($data) && ksort($data)) {
+	        foreach ($data as $item) {
+	            Resque::enqueue('default', $item['class'], $item['args'][0], true);
 	        }
 	    }
 	}
@@ -189,9 +207,7 @@ class Resque_Worker
 				break;
 			}
 			
-			
 			$this->collectDataFromSourceServers();			
-			
 
 			// Attempt to find and reserve a job
 			$job = false;

@@ -65,7 +65,7 @@ class Resque
 		if (is_callable(self::$redisServer)) {
 			self::$redis = call_user_func(self::$redisServer, self::$redisDatabase);
 		} else {
-			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase, self);
+			self::$redis = new Resque_Redis(self::$redisServer, self::$redisDatabase, self::$redisSourceServer);
 		}
 
 		return self::$redis;
