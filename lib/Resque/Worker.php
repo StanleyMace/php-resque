@@ -178,7 +178,7 @@ class Resque_Worker
 	        
 	        foreach ($this->sourceServersClients as $client) {
 	            if ($client->isConnected()) {
-    	            while($values = $client->lpop('resque:queue:default')) {
+    	            while($values = $client->lpop('resque:queue:node')) {
     	                $jobJson = json_decode($values, true);
     	                $key = floatval($jobJson['queue_time']);
                         $data[(string) $key] = $jobJson;
