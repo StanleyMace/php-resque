@@ -171,6 +171,12 @@ class Resque_Worker
         $data = array();
 	    if (is_array($this->sourceServersClients)) {
 	        foreach ($this->sourceServersClients as $client) {
+	            if (!$client->isConnected()) {
+	                die("Disconnected from some node server");
+	            }
+	        }
+	        
+	        foreach ($this->sourceServersClients as $client) {
 	            if ($client->isConnected()) {
     	            while($values = $client->lpop('resque:queue:default')) {
     	                $jobJson = json_decode($values, true);
