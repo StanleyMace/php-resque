@@ -189,9 +189,17 @@ class Resque_Worker
 	        }
 	    }
 	    
-	    if (count($data) && ksort($data)) {
+        if (count($data) && ksort($data)) {
 	        foreach ($data as $item) {
-	            Resque::enqueue('default', $item['class'], $item['args'][0], true);
+	            $request = unserialize(base64_decode($item['args'][0][request]));  
+	            if (method_exists($request, 'getToken')) {       
+                    $token = $request->getToken();
+                    $thread = abs(crc32($token));
+                    $thread = substr($thread, strlen($thread)-1, 1);
+                    Resque::enqueue('thread' . $thread, $item['class'], $item['args'][0], true);
+	            } else {
+	                Resque::enqueue('default', $item['class'], $item['args'][0], true);
+	            }
 	        }
 	    }
 	}
