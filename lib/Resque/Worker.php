@@ -150,6 +150,14 @@ class Resque_Worker
 	 */
 	public function connectToSourceServers()
 	{
+	    global $QUEUE;
+	    if (!$QUEUE) {
+	        $QUEUE = getenv('QUEUE');
+	    }
+	    if ($QUEUE != 'default') {
+	        return;
+	    }
+	    
 	   if (is_array(Resque::redis()->sourceServer)) {
 	        foreach (Resque::redis()->sourceServer as $server) {
 	            $client = new \Predis\Client($server);
@@ -168,6 +176,14 @@ class Resque_Worker
 	 */
 	public function collectDataFromSourceServers()
 	{
+	    global $QUEUE;
+	    if (!$QUEUE) {
+	        $QUEUE = getenv('QUEUE');
+	    }
+        if ($QUEUE != 'default') {
+            return;
+        }
+
         $data = array();
 	    if (is_array($this->sourceServersClients)) {
 	        foreach ($this->sourceServersClients as $client) {
@@ -188,7 +204,7 @@ class Resque_Worker
 	            }
 	        }
 	    }
-	    
+
         if (count($data) && ksort($data)) {
 	        foreach ($data as $item) {
 	            $request = unserialize(base64_decode($item['args'][0][request]));
