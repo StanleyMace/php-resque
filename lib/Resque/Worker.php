@@ -207,8 +207,18 @@ class Resque_Worker
                                 $json = json_decode($elem);
                                 if ($json) {
                                     $data = unserialize(base64_decode($json->args[0]->data));
-                                    if ($data && method_exists($data, 'getResult') && method_exists($data->getResult(), 'getRequest')) {
-                                        $req = $data->getResult()->getRequest();
+                                    $hasResultRequest = $data && method_exists($data, 'getResult') && method_exists($data->getResult(), 'getRequest');
+                                    $hasEntityRequest = $data && method_exists($data, 'getEntity') && method_exists($data->getEntity(), 'getRequest');
+                                    $hasRequest = $data && method_exists($data, 'getRequest');
+                                    
+                                    if ($hasResultRequest || $hasEntityRequest || $hasRequest) {
+                                        if ($hasResultRequest) {
+                                            $req = $data->getResult()->getRequest();
+                                        }else if ($hasEntityRequest) {
+                                            $req = $data->getEntity()->getRequest();
+                                        }else if ($hasRequest) {
+                                            $req = $data->getRequest();
+                                        }
                                         if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
                                             $foundInThread = $queue;
                                         }
@@ -228,7 +238,7 @@ class Resque_Worker
                         $thread = key($sizes);
                     }
                     
-                    Resque::enqueue('thread' . $thread, $item['class'], $item['args'][0], true);
+                    Resque::enqueue($thread, $item['class'], $item['args'][0], true);
 	            } else {
 	                Resque::enqueue('default', $item['class'], $item['args'][0], true);
 	            }
