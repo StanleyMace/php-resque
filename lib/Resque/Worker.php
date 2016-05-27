@@ -222,19 +222,13 @@ class Resque_Worker
                             foreach ($list as $elem) {
                                 $json = json_decode($elem);
                                 if ($json) {
-                                    $data = unserialize(base64_decode($json->args[0]->data));
-                                    $hasResultRequest = $data && method_exists($data, 'getResult') && method_exists($data->getResult(), 'getRequest');
-                                    $hasEntityRequest = $data && method_exists($data, 'getEntity') && method_exists($data->getEntity(), 'getRequest');
-                                    $hasRequest = $data && method_exists($data, 'getRequest');
-                                    
-                                    if ($hasResultRequest || $hasEntityRequest || $hasRequest) {
-                                        if ($hasResultRequest) {
-                                            $req = $data->getResult()->getRequest();
-                                        }else if ($hasEntityRequest) {
-                                            $req = $data->getEntity()->getRequest();
-                                        }else if ($hasRequest) {
-                                            $req = $data->getRequest();
+                                    $jobToken = $json->args[0]->token;
+                                    if ($jobToken) {
+                                        if ($jobToken == $token) {
+                                            $foundInThread = $queue;
                                         }
+                                    } else {
+                                        $req = unserialize(base64_decode($json->args[0]->request));
                                         if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
                                             $foundInThread = $queue;
                                         }
