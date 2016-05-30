@@ -324,10 +324,10 @@ class Resque_Worker
 
 			// Forked and we're the child. Run the job.
 			if ($this->child === 0 || $this->child === false) {
-			$status = 'Processing ' . $job->queue . ' since ' . strftime('%F %T');
-			$this->updateProcLine($status);
-			$this->logger->log(Psr\Log\LogLevel::INFO, $status);
-			$this->perform($job);
+    			$status = 'Processing ' . $job->queue . ' since ' . strftime('%F %T');
+    			$this->updateProcLine($status);
+    			$this->logger->log(Psr\Log\LogLevel::INFO, $status);
+    			$this->perform($job);
 				if ($this->child === 0) {
 					exit(0);
 				}
@@ -335,18 +335,18 @@ class Resque_Worker
 
 			if($this->child > 0) {
 				// Parent process, sit and wait
-			$status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
-			$this->updateProcLine($status);
-			$this->logger->log(Psr\Log\LogLevel::INFO, $status);
-
-			// Wait until the child process finishes before continuing
-			pcntl_wait($status);
-			$exitStatus = pcntl_wexitstatus($status);
-			if($exitStatus !== 0) {
-				$job->fail(new Resque_Job_DirtyExitException(
-					'Job exited with exit code ' . $exitStatus
-				));
-			}
+    			$status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
+    			$this->updateProcLine($status);
+    			$this->logger->log(Psr\Log\LogLevel::INFO, $status);
+    
+    			// Wait until the child process finishes before continuing
+    			pcntl_wait($status);
+    			$exitStatus = pcntl_wexitstatus($status);
+    			if($exitStatus !== 0) {
+    				$job->fail(new Resque_Job_DirtyExitException(
+    					'Job exited with exit code ' . $exitStatus
+    				));
+			    }
 			}
 
 			$this->child = null;
