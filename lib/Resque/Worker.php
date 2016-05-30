@@ -201,7 +201,7 @@ class Resque_Worker
 
                         $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
                         $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
-                        \Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], $jobJson['args'][0]);
+                        \Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], serialize($jobJson['args'][0]));
     	            }
 	            } else {
 	                die("Disconnected from some node server");
