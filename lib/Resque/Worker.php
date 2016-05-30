@@ -198,6 +198,10 @@ class Resque_Worker
     	                $jobJson = json_decode($values, true);
     	                $key = floatval($jobJson['queue_time']);
                         $data[(string) $key] = $jobJson;
+
+                        $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
+                        $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
+                        \Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], $jobJson['args'][0]);
     	            }
 	            } else {
 	                die("Disconnected from some node server");
