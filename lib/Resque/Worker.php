@@ -320,7 +320,8 @@ class Resque_Worker
 			Resque_Event::trigger('beforeFork', $job);
 			$this->workingOn($job);
 
-			$this->child = Resque::fork();
+// 			$this->child = Resque::fork();
+			$this->child = -1;
 
 			// Forked and we're the child. Run the job.
 			if ($this->child === 0 || $this->child === false || $this->child === -1) {
@@ -333,20 +334,22 @@ class Resque_Worker
 				}
 			}
 
-			if($this->child > 0) {
+			if($this->child > 0 || $this->child === -1) {
 				// Parent process, sit and wait
     			$status = 'Forked ' . $this->child . ' at ' . strftime('%F %T');
     			$this->updateProcLine($status);
     			$this->logger->log(Psr\Log\LogLevel::INFO, $status);
     
     			// Wait until the child process finishes before continuing
-    			pcntl_wait($status);
-    			$exitStatus = pcntl_wexitstatus($status);
-    			if($exitStatus !== 0) {
-    				$job->fail(new Resque_Job_DirtyExitException(
-    					'Job exited with exit code ' . $exitStatus
-    				));
-			    }
+    			if($this->child > 0) {
+        			pcntl_wait($status);
+        			$exitStatus = pcntl_wexitstatus($status);
+        			if($exitStatus !== 0) {
+        				$job->fail(new Resque_Job_DirtyExitException(
+        					'Job exited with exit code ' . $exitStatus
+        				));
+    			    }
+    			}
 			}
 
 			$this->child = null;
