@@ -157,8 +157,8 @@ class Resque_Worker
 	    if ($QUEUE != 'default') {
 	        return;
 	    }
-	    
-	   if (is_array(Resque::redis()->sourceServer)) {
+	    $this->logger->log(Psr\Log\LogLevel::INFO, 'Connecting to nodes...');
+	    if (is_array(Resque::redis()->sourceServer)) {
 	        foreach (Resque::redis()->sourceServer as $server) {
 	            $client = new \Predis\Client($server);
 	            $client->connect();
@@ -169,6 +169,7 @@ class Resque_Worker
 	            }
 	        }
 	    }
+	    $this->logger->log(Psr\Log\LogLevel::INFO, 'Connected to nodes');    
 	}
 	
 	/**
@@ -185,6 +186,7 @@ class Resque_Worker
         }
 
         $data = array();
+        $this->logger->log(Psr\Log\LogLevel::INFO, 'Collecting from nodes...');
 	    if (is_array($this->sourceServersClients)) {
 	        foreach ($this->sourceServersClients as $client) {
 	            if (!$client->isConnected()) {
@@ -208,18 +210,25 @@ class Resque_Worker
 	            }
 	        }
 	    }
+	    $this->logger->log(Psr\Log\LogLevel::INFO, 'Collected from nodes');
 
         if (count($data) && ksort($data)) {
             $queues = array('default','thread0','thread1','thread2','thread3','thread4','thread5','thread6','thread7','thread8','thread9');
              
+            $this->logger->log(Psr\Log\LogLevel::INFO, 'Building queue list...');
             foreach ($queues as $queue) {
                 if ($queue !== 'default') {
                     $len = \Resque::redis()->lLen('resque:queue:' . $queue);
-                    $queueList[$queue] = \Resque::redis()->lRange('resque:queue:' . $queue, 0, $len);                   
+                    $queueList[$queue] = \Resque::redis()->lRange('resque:queue:' . $queue, 0, $len);
+                    $sizes[$queue] = \Resque::size($queue);
                 }
             }
+            $this->logger->log(Psr\Log\LogLevel::INFO, 'Build queue list complete');
             
+            $index = 0;
 	        foreach ($data as $item) {
+	            $this->logger->log(Psr\Log\LogLevel::INFO, 'Produce list: ' . (++$index) . ' of ' . count($data));
+	            
 	            $request = unserialize(base64_decode($item['args'][0][request]));
 	            
 	            if ($request && method_exists($request, 'getToken')) {
@@ -247,7 +256,7 @@ class Resque_Worker
                                     }
                                 }
                             }
-                            $sizes[$queue] = \Resque::size($queue);
+//                             $sizes[$queue] = \Resque::size($queue);
                         }
                     }
                     
@@ -265,11 +274,14 @@ class Resque_Worker
                     $o->id = $item['id'];
                     $o->queue_time = $item['queue_time'];
                     $queueList[$thread][] = json_encode($o, JSON_UNESCAPED_UNICODE);
+                    $sizes[$thread]++;
                     
                     Resque::enqueue($thread, $item['class'], $item['args'][0], true);
 	            } else {
 	                Resque::enqueue('default', $item['class'], $item['args'][0], true);
 	            }
+	            
+	            $this->logger->log(Psr\Log\LogLevel::INFO, 'Ready ' . $index . ' of ' . count($data));
 	        }
 	    }
 	}
