@@ -157,7 +157,7 @@ class Resque_Worker
 	    if ($QUEUE != 'default') {
 	        return;
 	    }
-	    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Connecting to nodes...');
+	    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Connecting to nodes...');
 	    if (is_array(Resque::redis()->sourceServer)) {
 	        foreach (Resque::redis()->sourceServer as $server) {
 	            $client = new \Predis\Client($server);
@@ -169,7 +169,8 @@ class Resque_Worker
 	            }
 	        }
 	    }
-	    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Connected to nodes');    
+	    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Connected to nodes');
+	    usleep($interval * 1000000);
 	}
 	
 	/**
@@ -213,21 +214,28 @@ class Resque_Worker
         if (count($data) && ksort($data)) {
             $queues = array('default','thread0','thread1','thread2','thread3','thread4','thread5','thread6','thread7','thread8','thread9');
              
-            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Building queue list...');
+            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Building queue list...');
             foreach ($queues as $queue) {
                 if ($queue !== 'default') {
                     $len = \Resque::redis()->lLen('resque:queue:' . $queue);
                     $queueList[$queue] = \Resque::redis()->lRange('resque:queue:' . $queue, 0, $len);
+                    foreach ($queueList[$queue] as $elem) {
+                        $queueList[$queue][text] = $elem;
+                        $queueList[$queue][json] = json_decode($elem);
+                        $queueList[$queue][req] = unserialize(base64_decode($queueList[$queue][json]->args[0]->request));
+                    }
                     $sizes[$queue] = \Resque::size($queue);
                 }
             }
-            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Build queue list complete');
+            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Build queue list complete');
             
             $index = 0;
 	        foreach ($data as $item) {
-	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Produce list: ' . (++$index) . ' of ' . count($data));
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Produce list: ' . (++$index) . ' of ' . count($data));
 	            
 	            $request = unserialize(base64_decode($item['args'][0][request]));
+	            
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialized');
 	            
 	            if ($request && method_exists($request, 'getToken')) {
 	                $token = $request->getToken();
@@ -237,7 +245,7 @@ class Resque_Worker
                     foreach ($queues as $queue) {
                         if ($queue !== 'default') {
                             foreach ($queueList[$queue] as $elem) {
-                                $json = json_decode($elem);
+                                $json = $elem[json];
                                 if ($json) {
                                     $jobToken = $json->args[0]->token;
                                     if ($jobToken) {
@@ -246,7 +254,7 @@ class Resque_Worker
                                             break;
                                         }
                                     } else {
-                                        $req = unserialize(base64_decode($json->args[0]->request));
+                                        $req = $elem[req];
                                         if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
                                             $foundInThread = $queue;
                                             break;
@@ -258,28 +266,36 @@ class Resque_Worker
                         }
                     }
                     
+                    
                     if ($foundInThread) {
                         $thread = $foundInThread;
                     } else {
+                        $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Sorting...');
                         asort($sizes);
                         reset($sizes);
                         $thread = key($sizes);
                     }
                     
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Make stdClass');
                     $o = new stdClass();
                     $o->args = $item['args'];
                     $o->class = $item['class'];
                     $o->id = $item['id'];
                     $o->queue_time = $item['queue_time'];
-                    $queueList[$thread][] = json_encode($o, JSON_UNESCAPED_UNICODE);
+                    $listElem[text] = json_encode($o, JSON_UNESCAPED_UNICODE);
+                    $listElem[json] = $o;
+                    $listElem[req] = unserialize(base64_decode($o->args[0]->request));
+                    $queueList[$thread][] = $listElem;
                     $sizes[$thread]++;
                     
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to ' . $thread);
                     Resque::enqueue($thread, $item['class'], $item['args'][0], true);
 	            } else {
+	                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to default');
 	                Resque::enqueue('default', $item['class'], $item['args'][0], true);
 	            }
 	            
-	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . 'Ready ' . $index . ' of ' . count($data));
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Ready ' . $index . ' of ' . count($data));
 	        }
 	    }
 	}
