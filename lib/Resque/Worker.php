@@ -222,7 +222,7 @@ class Resque_Worker
                     foreach ($list as $elem) {
                         $listElem[text] = $elem;
                         $listElem[json] = json_decode($elem);
-                        $listElem[req] = unserialize(base64_decode($queueList[$queue][json]->args[0]->request));
+                        $listElem[req] = unserialize(base64_decode($listElem[json]->args[0]->request));
                         $queueList[$queue][] = $listElem;
                     }
                     $sizes[$queue] = \Resque::size($queue);
@@ -280,7 +280,11 @@ class Resque_Worker
                     
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Make stdClass');
                     $o = new stdClass();
-                    $o->args = $item['args'];
+                    $argsObj = new stdClass();                    
+                    foreach ($item['args'][0] as $key=>$value) {
+                        $argsObj->$key = $value;
+                    }
+                    $o->args[0] = $argsObj;
                     $o->class = $item['class'];
                     $o->id = $item['id'];
                     $o->queue_time = $item['queue_time'];
