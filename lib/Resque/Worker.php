@@ -334,8 +334,8 @@ class Resque_Worker
 			Resque_Event::trigger('beforeFork', $job);
 			$this->workingOn($job);
 
-// 			$this->child = Resque::fork();
-			$this->child = -1;
+ 			$this->child = Resque::fork();
+// 			$this->child = -1;
 
 			// Forked and we're the child. Run the job.
 			if ($this->child === 0 || $this->child === false || $this->child === -1) {
