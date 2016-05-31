@@ -218,11 +218,12 @@ class Resque_Worker
             foreach ($queues as $queue) {
                 if ($queue !== 'default') {
                     $len = \Resque::redis()->lLen('resque:queue:' . $queue);
-                    $queueList[$queue] = \Resque::redis()->lRange('resque:queue:' . $queue, 0, $len);
-                    foreach ($queueList[$queue] as $elem) {
-                        $queueList[$queue][text] = $elem;
-                        $queueList[$queue][json] = json_decode($elem);
-                        $queueList[$queue][req] = unserialize(base64_decode($queueList[$queue][json]->args[0]->request));
+                    $list = \Resque::redis()->lRange('resque:queue:' . $queue, 0, $len);
+                    foreach ($list as $elem) {
+                        $listElem[text] = $elem;
+                        $listElem[json] = json_decode($elem);
+                        $listElem[req] = unserialize(base64_decode($queueList[$queue][json]->args[0]->request));
+                        $queueList[$queue][] = $listElem;
                     }
                     $sizes[$queue] = \Resque::size($queue);
                 }
@@ -244,25 +245,26 @@ class Resque_Worker
 	                
                     foreach ($queues as $queue) {
                         if ($queue !== 'default') {
-                            foreach ($queueList[$queue] as $elem) {
-                                $json = $elem[json];
-                                if ($json) {
-                                    $jobToken = $json->args[0]->token;
-                                    if ($jobToken) {
-                                        if ($jobToken == $token) {
-                                            $foundInThread = $queue;
-                                            break;
-                                        }
-                                    } else {
-                                        $req = $elem[req];
-                                        if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
-                                            $foundInThread = $queue;
-                                            break;
+                            if (is_array($queueList[$queue]) && count($queueList[$queue])) {
+                                foreach ($queueList[$queue] as $elem) {
+                                    $json = $elem[json];
+                                    if ($json) {
+                                        $jobToken = $json->args[0]->token;
+                                        if ($jobToken) {
+                                            if ($jobToken == $token) {
+                                                $foundInThread = $queue;
+                                                break;
+                                            }
+                                        } else {
+                                            $req = $elem[req];
+                                            if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
+                                                $foundInThread = $queue;
+                                                break;
+                                            }
                                         }
                                     }
                                 }
                             }
-//                             $sizes[$queue] = \Resque::size($queue);
                         }
                     }
                     
