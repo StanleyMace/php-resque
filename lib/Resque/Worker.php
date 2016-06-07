@@ -205,7 +205,10 @@ class Resque_Worker
                         $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
                         \Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1);
                         //vendor/scroller123/php-resque/lib/Resque/Worker.php
-                        file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], serialize($jobJson['args'][0]));
+                        
+                        $jobdata = serialize($jobJson['args'][0]);
+                        $jobdata = gzencode($jobdata, 9);
+                        file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
     	            }
 	            } else {
 	                die("Disconnected from some node server");
