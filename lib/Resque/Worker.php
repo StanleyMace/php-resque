@@ -202,7 +202,7 @@ class Resque_Worker
     	                $key = floatval($jobJson['queue_time']);
     	                
     	                $jobId = $jobJson['id'];
-    	                $client->delete('resque:job:' . $jobId . ':status');
+    	                $client->del(array('resque:job:' . $jobId . ':status'));
     	                
                         $data[(string) $key] = $jobJson;
 
