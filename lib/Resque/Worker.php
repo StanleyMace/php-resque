@@ -197,8 +197,13 @@ class Resque_Worker
 	        foreach ($this->sourceServersClients as $client) {
 	            if ($client->isConnected()) {
     	            while($values = $client->lpop('resque:queue:node')) {
+    	                
     	                $jobJson = json_decode($values, true);
     	                $key = floatval($jobJson['queue_time']);
+    	                
+    	                $jobId = $jobJson['id'];
+    	                $client->delete('resque:job:' . $jobId . ':status');
+    	                
                         $data[(string) $key] = $jobJson;
 
                         $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
