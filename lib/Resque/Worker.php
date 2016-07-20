@@ -304,11 +304,12 @@ class Resque_Worker
                     $queueList[$thread][] = $listElem;
                     $sizes[$thread]++;
                     
-                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to ' . $thread);
-                    Resque::enqueue($thread, $item['class'], $item['args'][0], true);
+                    
+                    $newJobId = Resque::enqueue($thread, $item['class'], $item['args'][0], true);
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to ' . $thread . ' ' . $item['id'] . '->' . $newJobId);
 	            } else {
-	                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to default');
-	                Resque::enqueue('default', $item['class'], $item['args'][0], true);
+	                $newJobId = Resque::enqueue('default', $item['class'], $item['args'][0], true);
+	                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to default ' . $item['id'] . '->' . $newJobId);
 	            }
 	            
 	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Ready ' . $index . ' of ' . count($data));
