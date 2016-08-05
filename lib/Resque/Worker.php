@@ -185,6 +185,8 @@ class Resque_Worker
         if ($QUEUE != 'default') {
             return;
         }
+        
+        
 
         $data = array();
 	    if (is_array($this->sourceServersClients)) {
@@ -194,26 +196,26 @@ class Resque_Worker
 	            }
 	        }
 	        
+	        
+	        
 	        foreach ($this->sourceServersClients as $client) {
 	            if ($client->isConnected()) {
     	            while($values = $client->lpop('resque:queue:node')) {
-    	                
     	                $jobJson = json_decode($values, true);
     	                $key = floatval($jobJson['queue_time']);
-    	                
     	                $jobId = $jobJson['id'];
-    	                $client->del(array('resque:job:' . $jobId . ':status'));
+    	                $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
+    	                $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
     	                
-                        $data[(string) $key] = $jobJson;
-
-                        $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
-                        $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
-                        \Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1);
-                        //vendor/scroller123/php-resque/lib/Resque/Worker.php
-                        
-                        $jobdata = serialize($jobJson['args'][0]);
-                        $jobdata = gzencode($jobdata, 9);
-                        file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
+    	                if (!\Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1)) {
+    	                    $client->lpush('resque:queue:node', $values);
+    	                } else {
+    	                    $client->del(array('resque:job:' . $jobId . ':status'));
+    	                    $data[(string) $key] = $jobJson;
+    	                    $jobdata = serialize($jobJson['args'][0]);
+    	                    $jobdata = gzencode($jobdata, 9);
+    	                    file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
+    	                }
     	            }
 	            } else {
 	                die("Disconnected from some node server");
