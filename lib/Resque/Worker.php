@@ -209,6 +209,7 @@ class Resque_Worker
     	                
     	                if (!\Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1)) {
     	                    $client->lpush('resque:queue:node', $values);
+    	                    die("Can't put job to resque. Return job no node!");
     	                } else {
     	                    $client->del(array('resque:job:' . $jobId . ':status'));
     	                    $data[(string) $key] = $jobJson;
