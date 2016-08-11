@@ -82,8 +82,6 @@ class Resque_Worker
         }
         $this->hostname = $hostname;
         $this->id = $this->hostname . ':'.getmypid() . ':' . implode(',', $this->queues);
-        
-        $this->connectToSourceServers();
     }
 
 	/**
@@ -186,8 +184,6 @@ class Resque_Worker
             return;
         }
         
-        
-
         $data = array();
 	    if (is_array($this->sourceServersClients)) {
 	        foreach ($this->sourceServersClients as $client) {
@@ -196,25 +192,37 @@ class Resque_Worker
 	            }
 	        }
 	        
-	        
-	        
 	        foreach ($this->sourceServersClients as $client) {
 	            if ($client->isConnected()) {
-    	            while($values = $client->lpop('resque:queue:node')) {
+    	            while($values = array_pop($client->lrange('resque:queue:node', 0, 0))) {
     	                $jobJson = json_decode($values, true);
     	                $key = floatval($jobJson['queue_time']);
     	                $jobId = $jobJson['id'];
     	                $jobDatetime = unserialize($jobJson['args'][0]['datetime']);
     	                $datetime = $jobDatetime ? $jobDatetime : new \DateTime();
     	                
-    	                if (!\Resque::redis()->set('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1)) {
-    	                    $client->lpush('resque:queue:node', $values);
+//     	                if (!\Resque::redis()->rpush('backup:' . $datetime->format("Y:m:d:H:i") . ':' . $jobJson['id'], 1)) {
+//     	                    die("Can't put job to resque. Return job no node!");
+//     	                } else 
+    	                if (!$jobId) {
+    	                    die("JobId is null");
+	                    } else if (!$jobJson['args'][0]) {
+	                        die("jobdata is null");
     	                } else {
     	                    $client->del(array('resque:job:' . $jobId . ':status'));
     	                    $data[(string) $key] = $jobJson;
     	                    $jobdata = serialize($jobJson['args'][0]);
     	                    $jobdata = gzencode($jobdata, 9);
-    	                    file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
+    	                    if ($jobdata) {
+    	                       $writen = file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
+    	                       if ($writen) {
+    	                           $client->lpop('resque:queue:node'); // only if all ok remove job
+    	                       } else {
+    	                           die("job can't write to backup file");
+    	                       }
+    	                    } else {
+        	                    die("jobdata serialized and gzip is null");
+    	                    }
     	                }
     	            }
 	            } else {
@@ -329,6 +337,7 @@ class Resque_Worker
 	 */
 	public function work($interval = Resque::DEFAULT_INTERVAL, $blocking = false)
 	{
+	    $this->connectToSourceServers();
 		$this->updateProcLine('Starting');
 		$this->startup();
 
