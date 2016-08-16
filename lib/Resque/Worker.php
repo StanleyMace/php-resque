@@ -252,11 +252,12 @@ class Resque_Worker
             
             $index = 0;
 	        foreach ($data as $item) {
+	            $start = microtime(true);
 	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Produce list: ' . (++$index) . ' of ' . count($data));
-	            
+
 	            $request = unserialize(base64_decode($item['args'][0][request]));
 	            
-	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialized');
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialized ' . (microtime(true)-$start));
 	            
 	            if ($request && method_exists($request, 'getToken')) {
 	                $token = $request->getToken();
@@ -288,6 +289,7 @@ class Resque_Worker
                         }
                     }
                     
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' search in threads ' . (microtime(true)-$start));
                     
                     if ($foundInThread) {
                         $thread = $foundInThread;
@@ -298,7 +300,7 @@ class Resque_Worker
                         $thread = key($sizes);
                     }
                     
-                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Make stdClass');
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Make stdClass ' . (microtime(true)-$start));
                     $o = new stdClass();
                     $argsObj = new stdClass();                    
                     foreach ($item['args'][0] as $key=>$value) {
@@ -309,20 +311,21 @@ class Resque_Worker
                     $o->id = $item['id'];
                     $o->queue_time = $item['queue_time'];
                     $listElem[text] = json_encode($o, JSON_UNESCAPED_UNICODE);
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' json_encode ' . (microtime(true)-$start));
                     $listElem[json] = $o;
                     $listElem[req] = unserialize(base64_decode($o->args[0]->request));
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialize & base64decode ' . (microtime(true)-$start));
                     $queueList[$thread][] = $listElem;
                     $sizes[$thread]++;
                     
-                    
                     $newJobId = Resque::enqueue($thread, $item['class'], $item['args'][0], true);
-                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to ' . $thread . ' ' . $item['id'] . '->' . $newJobId);
+                    $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to ' . $thread . ' ' . $item['id'] . '->' . $newJobId . ' '  . (microtime(true)-$start));
 	            } else {
 	                $newJobId = Resque::enqueue('default', $item['class'], $item['args'][0], true);
-	                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to default ' . $item['id'] . '->' . $newJobId);
+	                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Put to default ' . $item['id'] . '->' . $newJobId . ' '  . (microtime(true)-$start));
 	            }
 	            
-	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Ready ' . $index . ' of ' . count($data));
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Ready ' . $index . ' of ' . count($data) . ' '  . (microtime(true)-$start));
 	        }
 	    }
 	}
