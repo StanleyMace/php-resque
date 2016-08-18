@@ -242,7 +242,11 @@ class Resque_Worker
                     foreach ($list as $elem) {
                         $listElem[text] = $elem;
                         $listElem[json] = json_decode($elem);
-                        $listElem[req] = unserialize(base64_decode($listElem[json]->args[0]->request));
+                        $req = unserialize(base64_decode($listElem[json]->args[0]->request));
+                        $listElem[req] = $req;
+                        if ($req && method_exists($req, 'getSearchuid')) {
+                            $searchUidThread[$req->getSearchuid()] = $queue;
+                        }
                         $queueList[$queue][] = $listElem;
                     }
                     $sizes[$queue] = \Resque::size($queue);
@@ -262,44 +266,42 @@ class Resque_Worker
 	            if ($request && method_exists($request, 'getSearchuid')) {
 	                $searchuid = $request->getSearchuid();
 	                
-	                $foundInThread = false;
-	                
-                    foreach ($queues as $queue) {
-                        if ($queue !== 'default') {
-                            if (is_array($queueList[$queue]) && count($queueList[$queue])) {
-                                foreach ($queueList[$queue] as $elem) {
-                                    $req = $elem[req];
-                                    if ($req) {
-                                        try {
-                                            $jobSearchuid = $req->getSearchuid();
-                                            if ($jobSearchuid && $jobSearchuid == $searchuid) {
-                                                $foundInThread = $queue;
-                                                break;
-                                            } else if (!$jobSearchuid) {
-                                                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. '  . (microtime(true)-$start));
-                                                die();
-                                            }
-                                        } catch (\Exception $e) {
-                                            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. ' . $e->getMessage() . (microtime(true)-$start));
-                                            die();
-                                        }
-                                    } else {
-                                        $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: req not found ' . (microtime(true)-$start));
-                                        die();
-                                    }
-                                }
+//                     foreach ($queues as $queue) {
+//                         if ($queue !== 'default') {
+//                             if (is_array($queueList[$queue]) && count($queueList[$queue])) {
+//                                 foreach ($queueList[$queue] as $elem) {
+//                                     $req = $elem[req];
+//                                     if ($req) {
+//                                         try {
+//                                             $jobSearchuid = $req->getSearchuid();
+//                                             if ($jobSearchuid && $jobSearchuid == $searchuid) {
+//                                                 $foundInThread = $queue;
+//                                                 break;
+//                                             } else if (!$jobSearchuid) {
+//                                                 $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. '  . (microtime(true)-$start));
+//                                                 die();
+//                                             }
+//                                         } catch (\Exception $e) {
+//                                             $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. ' . $e->getMessage() . (microtime(true)-$start));
+//                                             die();
+//                                         }
+//                                     } else {
+//                                         $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: req not found ' . (microtime(true)-$start));
+//                                         die();
+//                                     }
+//                                 }
                                 
-                                if ($foundInThread) {
-                                    break;
-                                }
-                            }
-                        }
-                    }
+//                                 if ($foundInThread) {
+//                                     break;
+//                                 }
+//                             }
+//                         }
+//                     }
                     
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' search in threads ' . (microtime(true)-$start));
                     
-                    if ($foundInThread) {
-                        $thread = $foundInThread;
+                    if ($searchUidThread[$searchuid]) {
+                        $thread = $searchUidThread[$searchuid];
                     } else {
                         $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Sorting...');
                         asort($sizes);
@@ -320,7 +322,11 @@ class Resque_Worker
                     $listElem[text] = json_encode($o, JSON_UNESCAPED_UNICODE);
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' json_encode ' . (microtime(true)-$start));
                     $listElem[json] = $o;
-                    $listElem[req] = unserialize(base64_decode($o->args[0]->request));
+                    $req = unserialize(base64_decode($o->args[0]->request));
+                    $listElem[req] = $req;
+                    if ($req && method_exists($req, 'getSearchuid')) {
+                        $searchUidThread[$req->getSearchuid()] = $queue;
+                    }
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialize & base64decode ' . (microtime(true)-$start));
                     $queueList[$thread][] = $listElem;
                     $sizes[$thread]++;
