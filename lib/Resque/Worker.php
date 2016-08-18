@@ -259,8 +259,8 @@ class Resque_Worker
 	            
 	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialized ' . (microtime(true)-$start));
 	            
-	            if ($request && method_exists($request, 'getToken')) {
-	                $token = $request->getToken();
+	            if ($request && method_exists($request, 'getSearchuid')) {
+	                $searchuid = $request->getSearchuid();
 	                
 	                $foundInThread = false;
 	                
@@ -268,22 +268,29 @@ class Resque_Worker
                         if ($queue !== 'default') {
                             if (is_array($queueList[$queue]) && count($queueList[$queue])) {
                                 foreach ($queueList[$queue] as $elem) {
-                                    $json = $elem[json];
-                                    if ($json) {
-                                        $jobToken = $json->args[0]->token;
-                                        if ($jobToken) {
-                                            if ($jobToken == $token) {
+                                    $req = $elem[req];
+                                    if ($req) {
+                                        try {
+                                            $jobSearchuid = $req->getSearchuid();
+                                            if ($jobSearchuid && $jobSearchuid == $searchuid) {
                                                 $foundInThread = $queue;
                                                 break;
+                                            } else if (!$jobSearchuid) {
+                                                $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. '  . (microtime(true)-$start));
+                                                die();
                                             }
-                                        } else {
-                                            $req = $elem[req];
-                                            if ($req && method_exists($req, 'getToken') && $req->getToken() == $token) {
-                                                $foundInThread = $queue;
-                                                break;
-                                            }
+                                        } catch (\Exception $e) {
+                                            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: getSearchuid not found. ' . $e->getMessage() . (microtime(true)-$start));
+                                            die();
                                         }
+                                    } else {
+                                        $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: req not found ' . (microtime(true)-$start));
+                                        die();
                                     }
+                                }
+                                
+                                if ($foundInThread) {
+                                    break;
                                 }
                             }
                         }
