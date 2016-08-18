@@ -363,7 +363,17 @@ class Resque_Worker
 				break;
 			}
 			
-			$this->collectDataFromSourceServers();			
+			$collectorChild = Resque::fork();
+			if ($collectorChild === 0 || $collectorChild === false || $collectorChild === -1) {
+			    $status = 'Start Collector since ' . strftime('%F %T');
+			    $this->updateProcLine($status);
+			    $this->logger->log(Psr\Log\LogLevel::INFO, $status);
+			    $this->collectDataFromSourceServers();
+			    if ($collectorChild === 0) {
+			        exit(0);
+			    }
+			}
+						
 
 			// Attempt to find and reserve a job
 			$job = false;
