@@ -325,7 +325,8 @@ class Resque_Worker
                     $req = unserialize(base64_decode($o->args[0]->request));
                     $listElem[req] = $req;
                     if ($req && method_exists($req, 'getSearchuid')) {
-                        $searchUidThread[$req->getSearchuid()] = $queue;
+                        $searchUidThread[$req->getSearchuid()] = $thread;
+                        $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' suid ' . $req->getSearchuid() . ' to ' . $thread . ' ' . (microtime(true)-$start));
                     }
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialize & base64decode ' . (microtime(true)-$start));
                     $queueList[$thread][] = $listElem;
