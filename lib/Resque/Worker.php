@@ -183,6 +183,7 @@ class Resque_Worker
         if ($QUEUE != 'default') {
             return;
         }
+
         
         $data = array();
 	    if (is_array($this->sourceServersClients)) {
@@ -354,6 +355,11 @@ class Resque_Worker
 	 */
 	public function work($interval = Resque::DEFAULT_INTERVAL, $blocking = false)
 	{
+	    global $QUEUE;
+	    if (!$QUEUE) {
+	        $QUEUE = getenv('QUEUE');
+	    }
+	    
 	    $this->connectToSourceServers();
 		$this->updateProcLine('Starting');
 		$this->startup();
@@ -363,17 +369,38 @@ class Resque_Worker
 				break;
 			}
 			
-			$collectorChild = Resque::fork();
-			if ($collectorChild === 0 || $collectorChild === false || $collectorChild === -1) {
-			    $status = 'Start Collector since ' . strftime('%F %T');
-			    $this->updateProcLine($status);
-			    $this->logger->log(Psr\Log\LogLevel::INFO, $status);
-			    $this->collectDataFromSourceServers();
-			    if ($collectorChild === 0) {
-			        exit(0);
+			if ($QUEUE == 'default') {
+			    $collectorChild = Resque::fork();
+			    if ($collectorChild === 0 || $collectorChild === false || $collectorChild === -1) {
+			        $status = 'Collector since ' . strftime('%F %T');
+			        $this->updateProcLine($status);
+			        $this->logger->log(Psr\Log\LogLevel::INFO, $status);
+			        $this->collectDataFromSourceServers();
+			        if ($collectorChild === 0) {
+			            exit(0);
+			        }
 			    }
+			    
+			    if($collectorChild > 0 || $collectorChild === -1) {
+			        // Parent process, sit and wait
+			        $status = 'Forked default collector ' . $this->child . ' at ' . strftime('%F %T');
+			        $this->updateProcLine($status);
+			        $this->logger->log(Psr\Log\LogLevel::INFO, $status);
+			    
+			        // Wait until the child process finishes before continuing
+			        if($collectorChild > 0) {
+			            pcntl_wait($status);
+			            $exitStatus = pcntl_wexitstatus($status);
+			            if($exitStatus !== 0) {
+			            				$job->fail(new Resque_Job_DirtyExitException(
+			            				    'Job exited with exit code ' . $exitStatus
+			            				));
+			            }
+			        }
+			    }
+			    
+			    $collectorChild = null;			    
 			}
-						
 
 			// Attempt to find and reserve a job
 			$job = false;
