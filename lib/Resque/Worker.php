@@ -248,7 +248,7 @@ class Resque_Worker
                         if ($req && method_exists($req, 'getSearchuid')) {
                             $searchUidThread[$req->getSearchuid()] = $queue;
                         }
-                        $queueList[$queue][] = $listElem;
+//                         $queueList[$queue][] = $listElem;
                     }
                     $sizes[$queue] = \Resque::size($queue);
                 }
@@ -330,7 +330,7 @@ class Resque_Worker
                         $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' suid ' . $req->getSearchuid() . ' to ' . $thread . ' ' . (microtime(true)-$start));
                     }
                     $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' unserialize & base64decode ' . (microtime(true)-$start));
-                    $queueList[$thread][] = $listElem;
+//                     $queueList[$thread][] = $listElem;
                     $sizes[$thread]++;
                     
                     $newJobId = Resque::enqueue($thread, $item['class'], $item['args'][0], true);
