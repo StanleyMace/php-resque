@@ -438,7 +438,7 @@ class Resque_Worker
 				continue;
 			}
 
-			$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Starting work (/' . Resque::size('default') . ') on {job}', array('job' => $job));
+			$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Starting work (/' . Resque::size($QUEUE) . ') on {job}', array('job' => $job));
 			Resque_Event::trigger('beforeFork', $job);
 			$this->workingOn($job);
 
