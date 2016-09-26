@@ -211,18 +211,21 @@ class Resque_Worker
 	                        die("jobdata is null");
     	                } else {
     	                    $client->del(array('resque:job:' . $jobId . ':status'));
-    	                    $data[(string) $key] = $jobJson;
+    	                    $data[(string) $key . $jobId] = $jobJson;
     	                    $jobdata = serialize($jobJson['args'][0]);
     	                    $jobdata = gzencode($jobdata, 9);
     	                    if ($jobdata) {
     	                       $writen = file_put_contents(__DIR__ . '/../../../../../app/logs/jobs/' . 'backup.' . $datetime->format("Y.m.d.H.i") . '.' . $jobJson['id'], $jobdata);
     	                       if ($writen) {
     	                           $client->lpop('resque:queue:node'); // only if all ok remove job
+    	                           $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Job ' . $jobJson['id'] . ' put to file, pop from node');
     	                       } else {
-    	                           die("job can't write to backup file");
+    	                           $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: job cant write to backup file, Job ' . $jobJson['id']);
+    	                           die("job can't write to backup file " . $jobJson['id']);
     	                       }
     	                    } else {
-        	                    die("jobdata serialized and gzip is null");
+    	                        $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' ERROR: jobdata serialized and gzip is null, Job ' . $jobJson['id']);
+        	                    die("jobdata serialized and gzip is null" . $jobJson['id']);
     	                    }
     	                }
     	            }
@@ -258,7 +261,7 @@ class Resque_Worker
             $index = 0;
 	        foreach ($data as $item) {
 	            $start = microtime(true);
-	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Produce list: ' . (++$index) . ' of ' . count($data));
+	            $this->logger->log(Psr\Log\LogLevel::NOTICE, (new \DateTime())->format('Y-m-d H:i:s') . ' Produce list: ' . (++$index) . ' of ' . count($data) . ', job: ' . $item['id']);
 
 	            $request = unserialize(base64_decode($item['args'][0][request]));
 	            
